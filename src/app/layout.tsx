@@ -1,18 +1,11 @@
 import type { Metadata } from "next";
-import localFont from "next/font/local";
+import { Inter, Roboto_Mono, Montserrat } from 'next/font/google';
 import "./globals.css";
+import { ThemeProvider } from '@/components/ThemeProvider';
 
-const geistSans = localFont({
-  src: "./fonts/GeistVF.woff",
-  variable: "--font-geist-sans",
-  weight: "100 900",
-});
-
-const geistMono = localFont({
-  src: "./fonts/GeistMonoVF.woff",
-  variable: "--font-geist-mono",
-  weight: "100 900",
-});
+const inter = Inter({ subsets: ['latin'], variable: '--font-sans' })
+const robotoMono = Roboto_Mono({ subsets: ['latin'], variable: '--font-mono' })
+const montserrat = Montserrat({ subsets: ['latin'], variable: '--font-display' })
 
 export const metadata: Metadata = {
   title: "PAM TRAX",
@@ -25,11 +18,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
+    <html lang="en" className={`${inter.variable} ${robotoMono.variable} ${montserrat.variable}`}>
+      <body>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

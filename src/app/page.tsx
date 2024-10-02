@@ -1,11 +1,9 @@
 "use client"
 
 import React, { useState, useEffect, useRef } from 'react'
-import { Play, Pause, Menu } from 'lucide-react'
+import { Play, Pause } from 'lucide-react'
 import Image from 'next/image'
 import { Button } from "@/components/ui/button"
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Card, CardContent } from "@/components/ui/card"
 import {
   Carousel,
@@ -14,7 +12,8 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel"
-import { formatDate } from '@/lib/dateUtils'; // Update the import path accordingly
+import { formatDate } from '@/lib/dateUtils'
+import Navbar from '@/components/Navbar'
 
 const artists = ["JOE FUSS", "ADAM F", "APPRIL K", "GROOVINWAVES"]
 const parties = [
@@ -44,22 +43,17 @@ const mixtapes = [
 ]
 
 export default function Home() {
-  return (
-    <Page />
-  );
-}
-
-function Page() {
-  const [scrollY, setScrollY] = useState(0)
-  const [releases] = useState(mockReleases)
+  const [activeSection, setActiveSection] = useState('pam')
   const [isPlaying, setIsPlaying] = useState(false)
   const [audioSrc, setAudioSrc] = useState("")
-  const artistRefs = useRef<(HTMLDivElement | null)[]>([])
+  const [isHovered, setIsHovered] = useState(false)
+  const [logoLoaded, setLogoLoaded] = useState(false)
+  const [logoScale, setLogoScale] = useState(1)
   const circleRefs = useRef<(SVGCircleElement | null)[]>([])
   const audioRef = useRef<HTMLAudioElement>(null)
   const sectionRefs = useRef<{ [key: string]: React.RefObject<HTMLElement> }>({
-    home: React.createRef(),
     pam: React.createRef(),
+    about: React.createRef(),
     artists: React.createRef(),
     parties: React.createRef(),
     releases: React.createRef(),
@@ -67,36 +61,21 @@ function Page() {
     store: React.createRef(),
   })
 
-  const [activeSection, setActiveSection] = useState('home')
-
   useEffect(() => {
-    const handleScroll = () => {
-      setScrollY(window.scrollY)
-      updateActiveSection()
-    }
-    window.addEventListener("scroll", handleScroll)
-    return () => window.removeEventListener("scroll", handleScroll)
+    const timer = setTimeout(() => setLogoLoaded(true), 500)
+    return () => clearTimeout(timer)
   }, [])
 
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('fade-in')
-          } else {
-            entry.target.classList.remove('fade-in')
-          }
-        })
-      },
-      { threshold: 0.1 }
-    )
-
-    artistRefs.current.forEach((ref) => {
-      if (ref) observer.observe(ref)
-    })
-
-    return () => observer.disconnect()
+    const handleScroll = () => {
+      updateActiveSection()
+      const scrollPosition = window.scrollY
+      const maxScroll = 300
+      const scale = 1 + (scrollPosition / maxScroll) * 0.5
+      setLogoScale(Math.min(scale, 1.5))
+    }
+    window.addEventListener("scroll", handleScroll)
+    return () => window.removeEventListener("scroll", handleScroll)
   }, [])
 
   useEffect(() => {
@@ -131,13 +110,6 @@ function Page() {
     }
   }
 
-  const scrollToSection = (sectionId: string) => {
-    const section = sectionRefs.current[sectionId]
-    if (section && section.current) {
-      section.current.scrollIntoView({ behavior: 'smooth' })
-    }
-  }
-
   const updateActiveSection = () => {
     const scrollPosition = window.scrollY + 100
     Object.entries(sectionRefs.current).forEach(([id, ref]) => {
@@ -161,117 +133,82 @@ function Page() {
         </svg>
       </div>
 
-      <header className="fixed top-0 left-0 w-full z-10 bg-transparent backdrop-blur-sm">
-        <nav className="flex justify-between items-center p-4 max-w-5xl mx-auto">
-          <Button variant="ghost" onClick={() => scrollToSection('home')} className="text-lg font-bold tracking-wider hover:text-gray-600 transition-colors">PAM TRAX</Button>
-          <div className="md:hidden">
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <Menu size={20} />
-                  <span className="sr-only">Toggle menu</span>
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="bg-white bg-opacity-90 backdrop-blur-sm text-gray-800">
-                <SheetHeader>
-                  <SheetTitle className="text-gray-800">Menu</SheetTitle>
-                </SheetHeader>
-                <ScrollArea className="h-[calc(100vh-8rem)] mt-4">
-                  {['pam', 'artists', 'parties', 'releases', 'pamTapes', 'store'].map((section) => (
-                    <Button
-                      key={section}
-                      variant="ghost"
-                      onClick={() => {
-                        scrollToSection(section)
-                        document.body.click() // This will close the Sheet
-                      }}
-                      className={`w-full justify-start text-left mb-2 ${activeSection === section ? 'text-primary' : ''}`}
-                    >
-                      {section === 'pamTapes' ? 'PAM TAPES' : section.toUpperCase()}
-                    </Button>
-                  ))}
-                </ScrollArea>
-              </SheetContent>
-            </Sheet>
-          </div>
-          <div className="hidden md:flex space-x-4">
-            {['pam', 'artists', 'parties', 'releases', 'pamTapes', 'store'].map((section) => (
-              <Button
-                key={section}
-                variant="ghost"
-                onClick={() => scrollToSection(section)}
-                className={`text-xs hover:text-primary transition-colors ${activeSection === section ? 'text-primary' : ''}`}
-              >
-                {section === 'pamTapes' ? 'PAM TAPES' : section.toUpperCase()}
-              </Button>
-            ))}
-          </div>
-        </nav>
-      </header>
+      <Navbar activeSection={activeSection} />
 
       <main className="relative z-10">
-        <section ref={sectionRefs.current.home} className="h-screen flex flex-col items-center justify-center">
-          <h1
-            className="text-4xl sm:text-5xl md:text-6xl font-bold mb-4 glitch"
-            data-text="PAM TRAX"
-            style={{
-              transform: `translateY(${scrollY * 0.5}px)`,
-              transition: 'transform 0.3s ease-out'
-            }}
-          >
-            PAM TRAX
-          </h1>
+        <section id="pam" ref={sectionRefs.current.pam} className="min-h-screen flex items-center justify-center p-4">
+          <div className="text-center relative">
+            <div
+              className={`transition-all duration-1000 ease-out ${logoLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+                }`}
+              style={{
+                transform: `scale(${logoScale})`,
+                transition: 'transform 0.3s ease-out, opacity 1s ease-out, translate 1s ease-out',
+              }}
+            >
+              <Image
+                src="/logoblack.png"
+                alt="PAM TRAX Logo"
+                width={600}
+                height={600}
+                className="mx-auto w-full max-w-[400px] md:max-w-[600px] animate-pulse-slow"
+                onLoadingComplete={() => setLogoLoaded(true)}
+              />
+            </div>
+          </div>
         </section>
 
-        <section ref={sectionRefs.current.pam} className="py-24 px-4">
-          <div className="max-w-3xl mx-auto">
-            <div className="flex flex-col md:flex-row items-center justify-center gap-8">
-              <div className="w-full md:w-1/2 transform transition-all duration-1000 hover:scale-105">
+        <section id="about" ref={sectionRefs.current.about} className="py-16 md:py-24 px-4">
+          <div className="max-w-6xl mx-auto">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-8 md:gap-16">
+              <div className="w-full md:w-2/3 transform transition-all duration-1000 hover:scale-105">
                 <Image
-                  src="/logo.svg"
-                  alt="PAM TRAX Logo"
-                  width={400}
-                  height={400}
-                  className="w-full h-auto rounded-sm"
+                  src="/about.png"
+                  alt="About PAM TRAX"
+                  width={1000}
+                  height={1000}
+                  className="w-full h-auto object-cover"
                 />
               </div>
-              <div className="w-full md:w-1/2 text-center md:text-left">
-                <p className="mb-4 text-sm leading-relaxed opacity-0 transform translate-y-4 transition-all duration-1000 delay-300 animate-fade-in-up">
-                  PAM TRAX is a music label inspired by the spirit of Pam, whose influence runs deep through everything we do. As Joey&apos;s mother, her presence guides us with a quiet wisdom and unwavering energy that keeps us true to our vision.
+              <div className="w-full md:w-1/3 text-center md:text-left">
+                <p className="mb-4 text-sm md:text-base leading-relaxed opacity-0 transform translate-y-4 transition-all duration-1000 delay-300 animate-fade-in-up">
+                  PAM TRAX is a music label from Melbourne, inspired by the spirit of Pam, whose influence runs deep through everything we do. As Joey&apos;s mother, her presence guides us with a quiet wisdom and unwavering energy that keeps us true to our vision.
                 </p>
-                <p className="mb-4 text-sm leading-relaxed opacity-0 transform translate-y-4 transition-all duration-1000 delay-600 animate-fade-in-up">
-                  At PAM TRAX, we don&apos;t chase trends—we create music that resonates beyond the moment. It&apos;s about depth, quality, and an unshakable commitment to authenticity.
+                <p className="mb-4 text-sm md:text-base leading-relaxed opacity-0 transform translate-y-4 transition-all duration-1000 delay-600 animate-fade-in-up">
+                  It&apos;s about depth, quality, and an unshakable commitment to authenticity. Pam&apos;s imprint reminds us to stay grounded while making music that lasts.
+                </p>
+                <p className="text-sm md:text-base leading-relaxed opacity-0 transform translate-y-4 transition-all duration-1000 delay-900 animate-fade-in-up">
+                  This is where sound meets soul, crafted with purpose and timeless moments.
                 </p>
               </div>
             </div>
           </div>
         </section>
 
-        <section ref={sectionRefs.current.artists} className="py-24 px-4 bg-gray-50">
-          <h2 className="text-2xl font-bold mb-12 text-center">ARTISTS</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-3xl mx-auto">
-            {artists.map((artist, index) => (
+        <section id="artists" ref={sectionRefs.current.artists} className="py-16 md:py-24 px-4 bg-gray-50">
+          <h2 className="text-xl md:text-2xl font-bold mb-8 md:mb-12 text-center">ARTISTS</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8 max-w-3xl mx-auto">
+            {artists.map((artist) => (
               <div
                 key={artist}
                 className="text-center transform transition-all duration-1000 ease-in-out hover:scale-105"
-                ref={(el) => { if (el) artistRefs.current[index] = el }}
               >
-                <div className="w-24 h-24 mx-auto mb-4 bg-gray-200 flex items-center justify-center overflow-hidden rounded-sm">
-                  <span className="text-gray-800 text-2xl font-bold">{artist[0]}</span>
+                <div className="w-16 h-16 md:w-24 md:h-24 mx-auto mb-2 md:mb-4 bg-gray-200 flex items-center justify-center overflow-hidden rounded-sm">
+                  <span className="text-gray-800 text-xl md:text-2xl font-bold">{artist[0]}</span>
                 </div>
-                <p className="text-sm">{artist}</p>
+                <p className="text-xs md:text-sm">{artist}</p>
               </div>
             ))}
           </div>
         </section>
 
-        <section ref={sectionRefs.current.parties} className="py-24 px-4">
-          <h2 className="text-2xl font-bold mb-12 text-center">UPCOMING PARTIES</h2>
-          <div className="space-y-8 max-w-2xl mx-auto">
+        <section id="parties" ref={sectionRefs.current.parties} className="py-16 md:py-24 px-4">
+          <h2 className="text-xl md:text-2xl font-bold mb-8 md:mb-12 text-center">UPCOMING PARTIES</h2>
+          <div className="space-y-4 md:space-y-8 max-w-2xl mx-auto">
             {parties.map((party, index) => (
               <div
                 key={party.name}
-                className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-gray-200 pb-4 opacity-0 transform translate-y-4 transition-all duration-1000"
+                className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-gray-200 pb-4 opacity-0 transform translate-y-4 transition-all duration-1000 animate-fade-in-up"
                 style={{ animationDelay: `${index * 200}ms` }}
               >
                 <div>
@@ -285,58 +222,28 @@ function Page() {
           </div>
         </section>
 
-        <section ref={sectionRefs.current.releases} className="py-24 px-4 bg-gray-50">
-          <h2 className="text-2xl font-bold mb-12 text-center">LATEST RELEASES</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-            {releases.map((release, index) => (
-              <Card key={release.id} className="bg-white border border-gray-200 transform transition-all duration-500 hover:scale-105 opacity-0 animate-fade-in" style={{ animationDelay: `${index * 200}ms` }}>
-                <CardContent className="p-4">
-                  <Image src={release.image} alt={release.title} width={200} height={200} className="w-full h-40 object-cover mb-4 rounded-sm" />
-                  <h3 className="text-sm font-bold mb-1">{release.title}</h3>
-                  <p className="text-xs text-gray-500 mb-1">{release.artist}</p>
-                  <p className="text-xs text-gray-400 mb-2">{formatDate(release.date)}</p> {/* Updated Line */}
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setAudioSrc(`/audio/${release.id}.mp3`)
-                      setIsPlaying(true)
-                    }}
-                    className="w-full text-xs"
-                  >
-                    Play Preview
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </section>
-
-        <section ref={sectionRefs.current.pamTapes} className="py-24 px-4">
-          <h2 className="text-2xl font-bold mb-12 text-center">PAM TAPES</h2>
-          <Carousel className="w-full max-w-4xl mx-auto">
+        <section id="releases" ref={sectionRefs.current.releases} className="py-16 md:py-24 px-4 bg-gray-50">
+          <h2 className="text-xl md:text-2xl font-bold mb-8 md:mb-12 text-center">LATEST RELEASES</h2>
+          <Carousel className="w-full max-w-5xl mx-auto">
             <CarouselContent>
-              {mixtapes.map((mixtape) => (
-                <CarouselItem key={mixtape.id} className="md:basis-1/2 lg:basis-1/3 pl-4">
-                  <Card className="bg-white border border-gray-200 transform transition-all duration-500 hover:scale-105">
-                    <CardContent className="p-4">
-                      <Image
-                        src={mixtape.image}
-                        alt={mixtape.title}
-                        width={300}
-                        height={300}
-                        className="w-full h-auto mb-4 rounded-sm"
-                      />
-                      <h3 className="text-sm font-bold mb-1">{mixtape.title}</h3>
-                      <p className="text-xs text-gray-500 mb-2">{mixtape.artist}</p>
-                      <iframe
-                        width="100%"
-                        height="80"
-                        scrolling="no"
-                        frameBorder="no"
-                        allow="autoplay"
-                        src={`https://w.soundcloud.com/player/?url=${mixtape.soundcloudUrl}&color=%23ff5500&auto_play=false&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false`}
-                        className="rounded-sm"
-                      ></iframe>
+              {mockReleases.map((release) => (
+                <CarouselItem key={release.id} className="md:basis-1/2 lg:basis-1/3 pl-4">
+                  <Card className="m-2 bg-white border border-gray-200 transform transition-all duration-500 hover:scale-105">
+                    <CardContent className="flex flex-col items-center justify-center p-4 md:p-6">
+                      <Image src={release.image} alt={release.title} width={200} height={200} className="w-full h-auto rounded-sm mb-4" />
+                      <h3 className="text-xs md:text-sm font-bold mb-1">{release.title}</h3>
+                      <p className="text-xs text-gray-500 mb-1">{release.artist}</p>
+                      <p className="text-xs text-gray-400">{formatDate(release.date)}</p>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setAudioSrc(`/audio/${release.id}.mp3`)
+                          setIsPlaying(true)
+                        }}
+                        className="mt-2 text-xs"
+                      >
+                        Play Preview
+                      </Button>
                     </CardContent>
                   </Card>
                 </CarouselItem>
@@ -347,55 +254,64 @@ function Page() {
           </Carousel>
         </section>
 
-        <section ref={sectionRefs.current.store} className="py-24 px-4 bg-gray-50">
-          <h2 className="text-2xl font-bold mb-8 text-center">STORE</h2>
-          <p className="text-center text-sm mb-8">Coming soon! Stay tuned for exclusive PAM TRAX merchandise.</p>
-          <div className="flex justify-center">
-            <Button variant="outline" size="sm" className="text-xs px-4 py-2 rounded-sm transform transition-all duration-300 hover:scale-105">
-              Subscribe to our Label
+        <section id="pamTapes" ref={sectionRefs.current.pamTapes} className="py-16 md:py-24 px-4">
+          <h2 className="text-xl md:text-2xl font-bold mb-8 md:mb-12 text-center">PAM TAPES</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8 max-w-6xl mx-auto">
+            {mixtapes.map((mixtape) => (
+              <div key={mixtape.id} className="text-center group">
+                <Image src={mixtape.image} alt={mixtape.title} width={200} height={200} className="w-full h-auto rounded-sm mx-auto mb-2 md:mb-4 group-hover:opacity-80 transition-opacity" />
+                <p className="font-semibold mb-1 text-xs md:text-sm">{mixtape.title}</p>
+                <p className="text-xs text-gray-500 mb-2">{mixtape.artist}</p>
+                <Button variant="outline" size="sm" asChild className="border-gray-200 hover:border-gray-400 text-xs">
+                  <a href={mixtape.soundcloudUrl} target="_blank" rel="noopener noreferrer">Listen</a>
+                </Button>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section id="store" ref={sectionRefs.current.store} className="py-16 md:py-24 px-4 bg-gray-50">
+          <div className="text-center">
+            <h2 className="text-xl md:text-2xl font-bold mb-4">PAM Store</h2>
+            <p className="text-sm mb-8 opacity-70">Coming Soon</p>
+            <Button variant="outline" size="sm" className="text-xs border-gray-200 hover:border-gray-400">
+              Get Notified
             </Button>
           </div>
         </section>
       </main>
 
-      <footer className="relative z-10 py-12 px-4 border-t border-gray-200 bg-white">
-        <div className="container mx-auto flex flex-col md:flex-row justify-between items-center">
-          <div className="mb-8 md:mb-0">
-            <Image
-              src="/logoblack.png"
-              alt="PAM TRAX Logo"
-              width={100}
-              height={50}
-              className="mx-auto md:mx-0"
-            />
-          </div>
-          <div className="text-center md:text-right">
-            <p className="mb-4 text-xs text-gray-500">© 2023 PAM TRAX. ALL RIGHTS RESERVED.</p>
-            <div className="flex flex-wrap justify-center md:justify-end space-x-4">
-              <a href="https://soundcloud.com/jozefconor/sets/2023-hardware-works-im-still/s-7M74BWolEsG?si=a26c334fda6e427ea884e5314575065f&utm_source=clipboard&utm_medium=text&utm_campaign=social_sharing" className="text-xs hover:text-primary transition-colors" target="_blank" rel="noopener noreferrer">SOUNDCLOUD</a>
-              <a href="https://soundcloud.com/jozefconor/sets/2023-hardware-works-im-still/s-7M74BWolEsG?si=a26c334fda6e427ea884e5314575065f&utm_source=clipboard&utm_medium=text&utm_campaign=social_sharing" className="text-xs hover:text-primary transition-colors" target="_blank" rel="noopener noreferrer">BANDCAMP</a>
-              <a href="https://soundcloud.com/jozefconor/sets/2023-hardware-works-im-still/s-7M74BWolEsG?si=a26c334fda6e427ea884e5314575065f&utm_source=clipboard&utm_medium=text&utm_campaign=social_sharing" className="text-xs hover:text-primary transition-colors" target="_blank" rel="noopener noreferrer">INSTAGRAM</a>
-              <a href="https://www.discogs.com/" className="text-xs hover:text-primary transition-colors" target="_blank" rel="noopener noreferrer">DISCOGS</a>
+      <footer className="bg-white text-gray-800 py-4">
+        <div className="max-w-4xl mx-auto px-4">
+          <div className="flex flex-col items-center space-y-4">
+            <Image src="/logo.svg" alt="PAM TRAX Logo" width={50} height={50} />
+            <div className="flex flex-wrap justify-center gap-4">
+              <a href="https://www.soundcloud.com/jozefconor" target="_blank" rel="noopener noreferrer" className="text-xs hover:text-gray-600">SoundCloud</a>
+              <a href="https://www.soundcloud.com/jozefconor" target="_blank" rel="noopener noreferrer" className="text-xs hover:text-gray-600">Instagram</a>
+              <a href="https://www.soundcloud.com/jozefconor" target="_blank" rel="noopener noreferrer" className="text-xs hover:text-gray-600">Bandcamp</a>
+              <a href="https://www.soundcloud.com/jozefconor" target="_blank" rel="noopener noreferrer" className="text-xs hover:text-gray-600">Discogs</a>
             </div>
+            <p className="text-xs opacity-70 text-center">&copy; 2024 PAM TRAX. All rights reserved.</p>
           </div>
         </div>
       </footer>
 
-      <div className="fixed bottom-6 right-6 z-20">
-        <button
+      <div
+        className="fixed bottom-8 right-8 z-50 transition-all duration-300 ease-in-out"
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
+        <div className={`absolute inset-0 bg-gray-200 rounded-full transition-all duration-300 ${isHovered ? 'scale-150 opacity-20' : 'scale-100 opacity-0'}`}></div>
+        <Button
           onClick={togglePlay}
-          className="w-16 h-16 bg-white bg-opacity-90 backdrop-blur-sm rounded-full flex items-center justify-center border border-gray-200 hover:bg-opacity-100 transition-all duration-300 focus:outline-none group shadow-lg transform hover:scale-105"
-          aria-label={isPlaying ? "Pause music" : "Play music"}
+          className={`relative bg-white text-gray-800 hover:bg-gray-100 transition-all duration-300 rounded-full w-16 h-16 flex items-center justify-center shadow-lg ${isHovered ? 'scale-110' : 'scale-100'}`}
         >
-          <div className="relative w-10 h-10">
-            <div className="absolute inset-0 bg-gray-200 rounded-full transform scale-0 group-hover:scale-100 transition-transform duration-300"></div>
-            {isPlaying ? (
-              <Pause className="w-6 h-6 text-gray-800 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
-            ) : (
-              <Play className="w-6 h-6 text-gray-800 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
-            )}
-          </div>
-        </button>
+          {isPlaying ? (
+            <Pause size={24} className="text-gray-800" />
+          ) : (
+            <Play size={24} className="text-gray-800" />
+          )}
+        </Button>
       </div>
 
       <audio
@@ -413,91 +329,12 @@ function Page() {
 
         body {
           font-family: 'Roboto Mono', monospace;
-          background-color: white;
-          color: #333;
         }
 
-        @keyframes glitch {
-          0% {
-            text-shadow: 0.05em 0 0 rgba(255,0,0,.75),
-                        -0.025em -0.05em 0 rgba(0,255,0,.75),
-                        0.025em 0.05em 0 rgba(0,0,255,.75);
-          }
-          14% {
-            text-shadow: 0.05em 0 0 rgba(255,0,0,.75),
-                        -0.025em -0.05em 0 rgba(0,255,0,.75),
-                        0.025em 0.05em 0 rgba(0,0,255,.75);
-          }
-          15% {
-            text-shadow: -0.05em -0.025em 0 rgba(255,0,0,.75),
-                        0.025em 0.025em 0 rgba(0,255,0,.75),
-                        -0.05em -0.05em 0 rgba(0,0,255,.75);
-          }
-          49% {
-            text-shadow: -0.05em -0.025em 0 rgba(255,0,0,.75),
-                        0.025em 0.025em 0 rgba(0,255,0,.75),
-                        -0.05em -0.05em 0 rgba(0,0,255,.75);
-          }
-          50% {
-            text-shadow: 0.025em 0.05em 0 rgba(255,0,0,.75),
-                        0.05em 0 0 rgba(0,255,0,.75),
-                        0 -0.05em 0 rgba(0,0,255,.75);
-          }
-          99% {
-            text-shadow: 0.025em 0.05em 0 rgba(255,0,0,.75),
-                        0.05em 0 0 rgba(0,255,0,.75),
-                        0 -0.05em 0 rgba(0,0,255,.75);
-          }
-          100% {
-            text-shadow: -0.025em 0 0 rgba(255,0,0,.75),
-                        -0.025em -0.025em 0 rgba(0,255,0,.75),
-                        -0.025em -0.05em 0 rgba(0,0,255,.75);
-          }
+        .animate-fade-in-up {
+          animation: fadeInUp 1s ease-out forwards;
         }
 
-        .glitch {
-          animation: glitch 1s linear infinite;
-          color: #333;
-        }
-
-        .fade-in {
-          animation: fadeIn 1s ease-out forwards;
-        }
-
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        /* Parallax effect for sections */
-        section {
-          position: relative;
-          overflow: hidden;
-        }
-
-        section::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          transform: translateY(-5%);
-          transition: transform 0.5s ease-out;
-          z-index: -1;
-        }
-
-        section:hover::before {
-          transform: translateY(0);
-        }
-
-        /* New animations */
         @keyframes fadeInUp {
           from {
             opacity: 0;
@@ -509,24 +346,24 @@ function Page() {
           }
         }
 
-        .animate-fade-in-up {
-          animation: fadeInUp 1s ease-out forwards;
+        @keyframes pulse-slow {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.05); }
+        }
+
+        .animate-pulse-slow {
+          animation: pulse-slow 4s ease-in-out infinite;
         }
 
         @keyframes float {
-          0% {
-            transform: translateY(0px);
-          }
-          50% {
-            transform: translateY(-10px);
-          }
-          100% {
-            transform: translateY(0px);
-          }
+          0%, 100% { transform: translateY(0px) rotate(0deg); }
+          25% { transform: translateY(-15px) rotate(-2deg); }
+          50% { transform: translateY(0px) rotate(0deg); }
+          75% { transform: translateY(-15px) rotate(2deg); }
         }
 
         .animate-float {
-          animation: float 3s ease-in-out infinite;
+          animation: float 8s ease-in-out infinite;
         }
       `}</style>
     </div>
